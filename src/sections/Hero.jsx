@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion';
-import { ChevronDown, ArrowRight } from 'lucide-react';
+import { ChevronDown, ArrowRight, Download } from 'lucide-react';
 
 export default function Hero() {
-  // Animation Variants for staggered children
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -26,9 +25,8 @@ export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-[#0a0a0a] overflow-hidden selection:bg-[#6b8e23]/30">
       
-      {/* 1. THE VISUAL ANCHOR: Dynamic Background */}
+      {/* 1. Dynamic Background */}
       <div className="absolute inset-0 z-0">
-        {/* Subtle Grid Pattern */}
         <div 
           className="absolute inset-0 opacity-[0.15]" 
           style={{ 
@@ -36,32 +34,21 @@ export default function Hero() {
             backgroundSize: '50px 50px' 
           }}
         />
-        
-        {/* Radial Mask to fade the grid at edges */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0a0a0a_80%)]" />
 
-        {/* Animated Floating Glows */}
         <motion.div 
-          animate={{ 
-            x: [0, 30, 0], 
-            y: [0, 50, 0], 
-            opacity: [0.3, 0.6, 0.3] 
-          }}
+          animate={{ x: [0, 30, 0], y: [0, 50, 0], opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#6b8e23]/20 blur-[120px] pointer-events-none" 
         />
         <motion.div 
-          animate={{ 
-            x: [0, -40, 0], 
-            y: [0, -60, 0], 
-            opacity: [0.2, 0.4, 0.2] 
-          }}
+          animate={{ x: [0, -40, 0], y: [0, -60, 0], opacity: [0.2, 0.4, 0.2] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
           className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#6b8e23]/10 blur-[120px] pointer-events-none" 
         />
       </div>
 
-      {/* 2. Text Content - Now Centered for Balance */}
+      {/* 2. Text Content */}
       <div className="relative z-20 max-w-7xl mx-auto px-6 lg:px-12 w-full text-center">
         <motion.div 
           variants={containerVariants}
@@ -95,8 +82,9 @@ export default function Hero() {
           
           <motion.div 
             variants={itemVariants}
-            className="flex flex-wrap justify-center gap-6"
+            className="flex flex-wrap justify-center gap-4 md:gap-6"
           >
+            {/* PRIMARY CTA */}
             <a 
               href="#projects" 
               className="group relative px-8 py-4 bg-white text-black hover:bg-gray-200 transition-all duration-300 text-xs font-bold tracking-widest uppercase flex items-center gap-2 overflow-hidden rounded-sm"
@@ -104,6 +92,18 @@ export default function Hero() {
               Show Profile
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
+
+            {/* SECONDARY CTA - RESUME */}
+            <a 
+              href="/MENDOZA_Resume.pdf" 
+              download="MENDOZA_Resume.pdf" 
+              className="group relative px-8 py-4 bg-[#6b8e23] text-white hover:bg-[#55711b] transition-all duration-300 text-xs font-bold tracking-widest uppercase flex items-center gap-2 overflow-hidden rounded-sm shadow-lg shadow-[#6b8e23]/20"
+            >
+              <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              Resume
+            </a>
+
+            {/* TERTIARY CTA */}
             <a 
               href="#about" 
               className="px-8 py-4 border border-white/10 text-white hover:bg-white/5 transition-all duration-300 text-xs font-bold tracking-widest uppercase backdrop-blur-sm rounded-sm"
