@@ -1,237 +1,343 @@
 import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronDown, ArrowRight, Download } from 'lucide-react';
-import anime from 'animejs';
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from 'framer-motion';
+import { ArrowRight, ChevronDown, Download, Sparkles } from 'lucide-react';
 
-export default function Hero() {
-  const sectionRef = useRef(null);
-  const typeRef    = useRef(null);
-  const btn1Ref    = useRef(null);
-  const btn2Ref    = useRef(null);
-  const btn3Ref    = useRef(null);
+// This file assumes the PDF is at public/MENDOZA_Resume.pdf.
+const RESUME_URL = '/MENDOZA_Resume.pdf';
 
-  // ── 1. Hero entrance (Anime.js staggered sequence) ───────────
+const ROLES = [
+  'Full-Stack Developer.',
+  'Mobile App Developer.',
+  'Data Analyst.',
+  'Automation Developer.',
+];
+
+const STACK = ['React', 'C#', 'Flutter', 'Power BI'];
+const EASE_OUT = [0.16, 1, 0.3, 1];
+
+/**
+ * Reveals content only after App tells Hero the Preloader is finished.
+ * Framer Motion owns the DOM transforms, so React StrictMode cannot leave
+ * behind uncancelled Anime.js entrance timelines.
+ */
+function Enter({ children, className = '', delay = 0, isReady, reduceMotion }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: reduceMotion ? 0 : 22 }}
+      animate={{
+        opacity: isReady ? 1 : 0,
+        y: !isReady && !reduceMotion ? 22 : 0,
+      }}
+      transition={{
+        duration: reduceMotion ? 0 : 0.8,
+        delay: isReady && !reduceMotion ? delay : 0,
+        ease: EASE_OUT,
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** Motion values prevent spawning a new animation on every mousemove. */
+function MagneticLink({
+  children,
+  className = '',
+  reduceMotion,
+  strength = 0.17,
+  ...linkProps
+}) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 240, damping: 19, mass: 0.5 });
+  const springY = useSpring(y, { stiffness: 240, damping: 19, mass: 0.5 });
+
+  const reset = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  const handlePointerMove = (event) => {
+    if (reduceMotion || event.pointerType !== 'mouse') return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    x.set((event.clientX - (rect.left + rect.width / 2)) * strength);
+    y.set((event.clientY - (rect.top + rect.height / 2)) * strength);
+  };
+
+  return (
+    <motion.a
+      {...linkProps}
+      className={className}
+      style={reduceMotion ? undefined : { x: springX, y: springY }}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={reset}
+      onBlur={reset}
+    >
+      {children}
+    </motion.a>
+  );
+}
+
+/**
+ * isReady should be false while the Preloader is visible, then true once its
+ * onComplete handler finishes. Defaults to true for stand-alone use.
+ */
+export default function Hero({ isReady = true }) {
+  const typeRef = useRef(null);
+  const reduceMotion = Boolean(useReducedMotion());
+
+  // The visible typewriter text is decorative. Screen readers receive a stable
+  // description instead of hearing every character and deletion announced.
   useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-
-    anime({
-      targets:    el.querySelector('.hero-badge'),
-      opacity:    [0, 1],
-      translateY: [12, 0],
-      duration:   600,
-      delay:      300,
-      easing:     'easeOutExpo',
-    });
-
-    anime({
-      targets:    '.name-clip-inner',
-      translateY: ['105%', '0%'],
-      duration:   1100,
-      delay:      anime.stagger(130, { start: 400 }),
-      easing:     'easeOutExpo',
-    });
-
-    [
-      { sel: '.hero-role-line', delay: 850  },
-      { sel: '.hero-desc',      delay: 1000 },
-      { sel: '.hero-cta-row',   delay: 1150 },
-    ].forEach(({ sel, delay }) => {
-      anime({
-        targets:    el.querySelector(sel),
-        opacity:    [0, 1],
-        translateY: [16, 0],
-        duration:   700,
-        delay,
-        easing:     'easeOutExpo',
-      });
-    });
-  }, []);
-
-  // ── 2. Typewriter ─────────────────────────────────────────────
-  useEffect(() => {
-    const roles = [
-      'Full-Stack Developer.',
-      'Data Analyst.',
-      'System Automator.',
-      'UI/UX Enthusiast.',
-    ];
     const el = typeRef.current;
-    if (!el) return;
+    if (!el) return undefined;
 
-    let ri = 0, ci = 0, del = false, t;
+    if (!isReady) {
+      el.textContent = '';
+      return undefined;
+    }
+
+    if (reduceMotion) {
+      el.textContent = ROLES[0];
+      return undefined;
+    }
+
+    let roleIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+    let timer;
+    el.textContent = '';
 
     const tick = () => {
-      const word = roles[ri];
-      el.textContent = del ? word.slice(0, ci - 1) : word.slice(0, ci + 1);
-      del ? ci-- : ci++;
-      if (!del && ci === word.length) { del = true; t = setTimeout(tick, 2200); return; }
-      if (del && ci === 0)            { del = false; ri = (ri + 1) % roles.length; }
-      t = setTimeout(tick, del ? 38 : 80);
+      const role = ROLES[roleIndex];
+      if (!deleting) {
+        charIndex = Math.min(charIndex + 1, role.length);
+        el.textContent = role.slice(0, charIndex);
+        if (charIndex === role.length) {
+          deleting = true;
+          timer = window.setTimeout(tick, 1950);
+          return;
+        }
+      } else {
+        charIndex = Math.max(charIndex - 1, 0);
+        el.textContent = role.slice(0, charIndex);
+        if (charIndex === 0) {
+          deleting = false;
+          roleIndex = (roleIndex + 1) % ROLES.length;
+          timer = window.setTimeout(tick, 290);
+          return;
+        }
+      }
+      timer = window.setTimeout(tick, deleting ? 34 : 67);
     };
 
-    const start = setTimeout(tick, 1100);
-    return () => { clearTimeout(t); clearTimeout(start); };
-  }, []);
+    timer = window.setTimeout(tick, 1100);
+    return () => window.clearTimeout(timer);
+  }, [isReady, reduceMotion]);
 
-  // ── 3. Magnetic buttons ───────────────────────────────────────
-  useEffect(() => {
-    const refs = [btn1Ref, btn2Ref, btn3Ref];
-    const cleanup = [];
-
-    refs.forEach(ref => {
-      const el = ref.current;
-      if (!el) return;
-
-      const move = (e) => {
-        const r = el.getBoundingClientRect();
-        const x = (e.clientX - r.left - r.width  / 2) * 0.25;
-        const y = (e.clientY - r.top  - r.height / 2) * 0.25;
-        anime({ targets: el, translateX: x, translateY: y, duration: 250, easing: 'easeOutQuad' });
-      };
-
-      const leave = () => {
-        anime({ targets: el, translateX: 0, translateY: 0, duration: 700, easing: 'easeOutElastic(1, 0.5)' });
-      };
-
-      el.addEventListener('mousemove',  move);
-      el.addEventListener('mouseleave', leave);
-      cleanup.push(() => {
-        el.removeEventListener('mousemove',  move);
-        el.removeEventListener('mouseleave', leave);
-      });
-    });
-
-    return () => cleanup.forEach(fn => fn());
-  }, []);
+  const revealName = (delay) => ({
+    initial: { y: reduceMotion ? '0%' : '110%', opacity: 0 },
+    animate: {
+      y: !reduceMotion && !isReady ? '110%' : '0%',
+      opacity: isReady ? 1 : 0,
+    },
+    transition: {
+      duration: reduceMotion ? 0 : 1.12,
+      delay: isReady && !reduceMotion ? delay : 0,
+      ease: EASE_OUT,
+    },
+  });
 
   return (
     <section
-      ref={sectionRef}
-      className="relative min-h-screen flex items-center justify-center bg-[#0a0a0a] overflow-hidden selection:bg-[#6b8e23]/30"
+      id="home"
+      aria-labelledby="hero-heading"
+      className="relative isolate flex min-h-screen min-h-[100svh] items-center justify-center overflow-hidden bg-[#0a0a0a] px-6 pb-28 pt-32 text-white selection:bg-[#6b8e23]/40 sm:pb-32 lg:px-12"
     >
-
-      {/* ── Background ── */}
-      <div className="absolute inset-0 z-0">
+      {/* Subtle grid, vignette, orbital rings, and green ambient light. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div
-          className="absolute inset-0 opacity-[0.15]"
+          className="absolute inset-0 opacity-[0.17]"
           style={{
-            backgroundImage: `linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)`,
-            backgroundSize: '50px 50px',
+            backgroundImage:
+              'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
+            backgroundSize: '56px 56px',
           }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0a0a0a_80%)]" />
-        <motion.div
-          animate={{ x: [0, 30, 0], y: [0, 50, 0], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#6b8e23]/20 blur-[120px] pointer-events-none"
-        />
-        <motion.div
-          animate={{ x: [0, -40, 0], y: [0, -60, 0], opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#6b8e23]/10 blur-[120px] pointer-events-none"
-        />
-      </div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_4%,#0a0a0a_79%)]" />
 
-      {/* ── Text content ── */}
-      <div className="relative z-20 max-w-7xl mx-auto px-6 lg:px-12 w-full text-center">
-        <div className="flex flex-col items-center">
-
-          {/* Badge */}
-          <div className="hero-badge mb-6 opacity-0">
-            <span className="text-[#6b8e23] text-sm font-medium tracking-widest uppercase bg-[#6b8e23]/10 px-4 py-1.5 rounded-full border border-[#6b8e23]/20 backdrop-blur-sm">
-              Available for work
-            </span>
-          </div>
-
-          {/* Name — clip-reveal */}
-          <h1 className="text-6xl md:text-9xl font-bold text-white mb-4 tracking-tighter leading-[1]">
-            <span className="block" style={{ overflow: 'hidden' }}>
-              <span className="name-clip-inner block" style={{ transform: 'translateY(105%)' }}>
-                Hi, I am
-              </span>
-            </span>
-            <span className="block" style={{ overflow: 'hidden' }}>
-              <span
-                className="name-clip-inner block text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-gray-600"
-                style={{ transform: 'translateY(105%)' }}
-              >
-                Edward.
-              </span>
-            </span>
-          </h1>
-
-          {/* Typewriter */}
-          <p className="hero-role-line text-lg md:text-2xl text-[#6b8e23] mb-4 font-light tracking-wide opacity-0 min-h-[2rem]">
-            <span ref={typeRef} />
-            <span style={{
-              display:       'inline-block',
-              width:         '2px',
-              height:        '1em',
-              background:    '#6b8e23',
-              marginLeft:    '3px',
-              verticalAlign: 'middle',
-              animation:     'cursor-blink 0.75s infinite',
-            }} />
-          </p>
-
-          {/* Description */}
-          <p className="hero-desc text-lg md:text-2xl text-gray-400 mb-12 max-w-2xl font-light leading-relaxed opacity-0">
-            i build clean, scalable systems — from{' '}
-            <span className="text-white font-normal">full-stack web apps</span> and{' '}
-            <span className="text-white font-normal">mobile experiences</span> to automated
-            data pipelines and analytics dashboards.
-          </p>
-
-          {/* CTAs */}
-          <div className="hero-cta-row flex flex-wrap justify-center gap-4 md:gap-6 opacity-0">
-            <a
-              ref={btn1Ref}
-              href="#projects"
-              className="group relative px-8 py-4 bg-white text-black hover:bg-gray-200 transition-all duration-300 text-xs font-bold tracking-widest uppercase flex items-center gap-2 overflow-hidden rounded-sm"
-            >
-              View My Work
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </a>
-
-            <a
-              ref={btn2Ref}
-              href="/Edward_Mendoza_Resume.pdf"
-              download="Edward_Mendoza_Resume.pdf"
-              className="group relative px-8 py-4 bg-[#6b8e23] text-white hover:bg-[#55711b] transition-all duration-300 text-xs font-bold tracking-widest uppercase flex items-center gap-2 rounded-sm shadow-lg shadow-[#6b8e23]/20"
-            >
-              <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              Resume
-            </a>
-
-            <a
-              ref={btn3Ref}
-              href="#about"
-              className="px-8 py-4 border border-white/10 text-white hover:bg-white/5 transition-all duration-300 text-xs font-bold tracking-widest uppercase backdrop-blur-sm rounded-sm"
-            >
-              Know More
-            </a>
-          </div>
+        {/* Keep centering on a static wrapper so Motion rotation cannot override the CSS translation. */}
+        <div className="absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2">
+          <motion.div
+            className="relative h-[460px] w-[460px] rounded-full border border-[#6b8e23]/[0.13] sm:h-[690px] sm:w-[690px]"
+            animate={isReady && !reduceMotion ? { rotate: 360 } : { rotate: 0 }}
+            transition={{ duration: 95, repeat: Infinity, ease: 'linear' }}
+          >
+            <div className="absolute left-1/2 top-[-4px] h-2 w-2 rounded-full bg-[#a6c872] shadow-[0_0_24px_#a6c872]" />
+          </motion.div>
         </div>
+        <div className="absolute left-1/2 top-[44%] h-[315px] w-[315px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.04] sm:h-[500px] sm:w-[500px]" />
+
+        <motion.div
+          className="absolute -left-[16%] top-[-18%] h-[60%] w-[60%] rounded-full bg-[#6b8e23]/[0.16] blur-[105px]"
+          animate={isReady && !reduceMotion
+            ? { x: [0, 32, 0], y: [0, 38, 0], opacity: [0.55, 0.85, 0.55] }
+            : { x: 0, y: 0, opacity: 0.6 }}
+          transition={{ duration: 13, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute -bottom-[16%] -right-[16%] h-[55%] w-[55%] rounded-full bg-[#6b8e23]/[0.12] blur-[110px]"
+          animate={isReady && !reduceMotion
+            ? { x: [0, -42, 0], y: [0, -28, 0], opacity: [0.4, 0.8, 0.4] }
+            : { x: 0, y: 0, opacity: 0.5 }}
+          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
+      <div className="relative z-10 mx-auto w-full max-w-5xl text-center">
+        <Enter delay={0.12} isReady={isReady} reduceMotion={reduceMotion} className="mb-7 sm:mb-9">
+          <span className="inline-flex items-center gap-2.5 rounded-full border border-[#6b8e23]/35 bg-[#6b8e23]/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.19em] text-[#b5d48a] backdrop-blur-sm sm:text-xs">
+            <motion.span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-[#a4cd6c]"
+              animate={isReady && !reduceMotion ? { opacity: [1, 0.45, 1], scale: [1, 1.25, 1] } : undefined}
+              transition={{ repeat: Infinity, duration: 2.5 }}
+            />
+            Available for opportunities
+          </span>
+        </Enter>
+
+        <h1
+          id="hero-heading"
+          className="mb-5 text-[clamp(3.8rem,11vw,8.5rem)] font-bold leading-[0.98] tracking-[-0.065em] sm:mb-7"
+        >
+          <span className="block overflow-hidden pb-[0.08em]">
+            <motion.span {...revealName(0.25)} className="block">
+              Hi, I am
+            </motion.span>
+          </span>
+          <span className="block overflow-hidden pb-[0.09em]">
+            <motion.span
+              {...revealName(0.39)}
+              className="block bg-gradient-to-b from-white via-[#f7f7f7] to-[#929994] bg-clip-text text-transparent"
+            >
+              Edward<span className="text-[#a1c56e]">.</span>
+            </motion.span>
+          </span>
+        </h1>
+
+        <Enter delay={0.87} isReady={isReady} reduceMotion={reduceMotion} className="mb-5 sm:mb-6">
+          <p className="text-base font-medium tracking-wide text-[#a3c76a] sm:text-xl md:text-2xl">
+            <span className="sr-only">Full-Stack Developer, Mobile App Developer, Data Analyst, and Automation Developer.</span>
+            <span aria-hidden="true" className="relative inline-grid min-h-8 place-items-center align-middle">
+              {/* Invisible longest role prevents the typewriter from shifting layout. */}
+              <span className="invisible whitespace-nowrap">Mobile App Developer.</span>
+              <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap">
+                <span ref={typeRef} />
+                <span className="hero-type-cursor ml-1 inline-block h-[1em] w-[2px] bg-[#a3c76a]" />
+              </span>
+            </span>
+          </p>
+        </Enter>
+
+        <Enter delay={1.02} isReady={isReady} reduceMotion={reduceMotion}>
+          <p className="mx-auto mb-9 max-w-2xl text-[15px] font-light leading-[1.85] text-zinc-400 sm:mb-11 sm:text-lg md:text-xl">
+            I build practical software — from{' '}
+            <span className="font-medium text-zinc-100">web and mobile applications</span> to{' '}
+            <span className="font-medium text-zinc-100">automation systems</span> and{' '}
+            <span className="font-medium text-zinc-100">data dashboards</span> — with a focus on
+            clarity, usability, and real-world problems.
+          </p>
+        </Enter>
+
+        <Enter delay={1.16} isReady={isReady} reduceMotion={reduceMotion}>
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
+            <MagneticLink
+              href="#projects"
+              reduceMotion={reduceMotion}
+              className="group inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-md bg-white px-7 py-3.5 text-xs font-bold uppercase tracking-[0.13em] text-[#111] shadow-[0_8px_35px_rgba(255,255,255,0.10)] transition-colors duration-300 hover:bg-[#eaece8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a3c76a] sm:w-auto"
+            >
+              Explore projects
+              <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </MagneticLink>
+
+            <MagneticLink
+              href={RESUME_URL}
+              download="Edward_Mendoza_Resume.pdf"
+              aria-label="Download résumé PDF"
+              reduceMotion={reduceMotion}
+              className="group inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-md bg-[#6b8e23] px-7 py-3.5 text-xs font-bold uppercase tracking-[0.13em] text-white shadow-[0_8px_35px_rgba(107,142,35,0.22)] transition-colors duration-300 hover:bg-[#7da532] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a3c76a] sm:w-auto"
+            >
+              <Download aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+              Download résumé
+            </MagneticLink>
+
+            <MagneticLink
+              href="#about"
+              reduceMotion={reduceMotion}
+              strength={0.12}
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-white/15 bg-white/[0.035] px-7 py-3.5 text-xs font-bold uppercase tracking-[0.13em] text-zinc-100 backdrop-blur-sm transition-colors duration-300 hover:border-[#a3c76a]/45 hover:bg-white/[0.075] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a3c76a] sm:w-auto"
+            >
+              About me
+            </MagneticLink>
+          </div>
+        </Enter>
+
+        <Enter delay={1.34} isReady={isReady} reduceMotion={reduceMotion} className="mt-10 sm:mt-12">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[10px] tracking-[0.14em] text-white/35 sm:gap-x-4">
+            <span className="inline-flex items-center gap-1.5 text-[#b1cb8b]">
+              <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+              BUILDING WITH
+            </span>
+            {STACK.map((tech) => (
+              <span key={tech} className="rounded border border-white/[0.08] bg-white/[0.025] px-2.5 py-1.5 uppercase text-white/50">
+                {tech}
+              </span>
+            ))}
+          </div>
+        </Enter>
+      </div>
+
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-9 left-8 hidden text-[10px] uppercase tracking-[0.2em] text-white/20 lg:block">
+        01 / Introduction
+      </div>
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-9 right-8 hidden text-[10px] uppercase tracking-[0.2em] text-white/20 lg:block">
+        Design · Develop · Deliver
+      </div>
+
+      <motion.a
+        href="#projects"
+        aria-label="Scroll to projects"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.8, duration: 1 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2"
+        animate={{ opacity: isReady ? 1 : 0 }}
+        transition={{ duration: reduceMotion ? 0 : 0.7, delay: isReady && !reduceMotion ? 1.65 : 0 }}
+        className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1.5 rounded-md px-3 py-1 text-[9px] uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-[#a3c76a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#a3c76a] sm:bottom-7"
       >
-        <span className="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Scroll</span>
-        <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}>
-          <ChevronDown className="text-gray-400 w-5 h-5" />
-        </motion.div>
-      </motion.div>
+        Scroll to explore
+        <motion.span
+          aria-hidden="true"
+          animate={isReady && !reduceMotion ? { y: [0, 7, 0] } : { y: 0 }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <ChevronDown className="h-4 w-4" />
+        </motion.span>
+      </motion.a>
 
       <style>{`
-        @keyframes cursor-blink {
+        @keyframes hero-cursor-blink {
           0%, 49% { opacity: 1; }
           50%, 100% { opacity: 0; }
+        }
+        .hero-type-cursor { animation: hero-cursor-blink 0.8s steps(1) infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-type-cursor { animation: none; }
         }
       `}</style>
     </section>
