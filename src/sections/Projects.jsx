@@ -42,7 +42,8 @@ const projects = [
                 src: '/projects/cybereum/Home_Cybereum.jpg',
                 alt: 'Cybereum Dashboard',
                 caption: 'Home Dashboard',
-              }],
+              }
+            ],
     githubUrl: null, // Replace with an actual repository URL when public.
     liveUrl: null, // Replace with an actual live demo URL when available.
   },
