@@ -69,7 +69,11 @@ const projects = [
     accentBorder: 'rgba(59,130,246,0.30)',
     featured: false,
     stat: { value: '40+', label: 'buildings' },
-    screenshots: [],
+    screenshots: [
+      {
+        src: '/projects/dlsud-go/DLSUD_HOME.png'
+      }
+    ],
     githubUrl: null,
     liveUrl: null,
   },
