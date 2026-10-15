@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Blocks, Code2, Cpu, Wrench, X } from 'lucide-react';
 
 // Preserve the skill inventory and accent colors from your original Skills.jsx.
@@ -45,13 +45,15 @@ function ExpandingOrb({ category, isExpanded, onToggle, expandedWidth }) {
   const sandboxRef = useRef(null);
   const reduceMotion = useReducedMotion();
 
-  // Mobile panels gain a little height so longer lists can be browsed.
   const expandedHeight = expandedWidth < 380 ? 440 : 380;
   const panelId = `skill-panel-${category.id}`;
   const titleId = `skill-heading-${category.id}`;
-  const spring = reduceMotion
+
+  // Keep the original, visible orb-to-panel spring morph. LayoutGroup handles
+  // neighboring orbs moving into their new positions during that morph.
+  const morphSpring = reduceMotion
     ? { duration: 0 }
-    : { type: 'spring', stiffness: 135, damping: 23, mass: 0.85 };
+    : { type: 'spring', stiffness: 110, damping: 18, mass: 1 };
 
   return (
     <motion.div
@@ -60,124 +62,163 @@ function ExpandingOrb({ category, isExpanded, onToggle, expandedWidth }) {
       animate={{
         width: isExpanded ? expandedWidth : 120,
         height: isExpanded ? expandedHeight : 120,
-        borderRadius: isExpanded ? 28 : 60,
+        borderRadius: isExpanded ? 30 : 60,
         backgroundColor: isExpanded ? '#0f0f0f' : '#111111',
-      }}
-      transition={spring}
-      className="relative shrink-0 overflow-hidden border border-white/10 hover:border-white/25 focus-within:border-white/30"
-      style={{
+        borderColor: isExpanded ? `${category.accent}55` : 'rgba(255,255,255,0.10)',
         boxShadow: isExpanded
-          ? `0 0 48px ${category.accent}18`
-          : '0 0 16px rgba(0,0,0,0.08)',
+          ? `0 0 50px ${category.accent}20`
+          : `0 0 20px ${category.accent}00`,
       }}
+      transition={{
+        width: morphSpring,
+        height: morphSpring,
+        borderRadius: morphSpring,
+        layout: morphSpring,
+        backgroundColor: { duration: reduceMotion ? 0 : 0.3 },
+        borderColor: { duration: reduceMotion ? 0 : 0.3 },
+        boxShadow: { duration: reduceMotion ? 0 : 0.35 },
+      }}
+      className="group relative isolate shrink-0 overflow-hidden border hover:border-white/25 focus-within:border-white/40"
     >
-      {/* A single, persistent button retains keyboard focus after expansion. */}
+      {/* The circular orb stays mounted and fades/scales OUT as it grows.
+          This restores the clear visual morph that the previous update lost. */}
+      <motion.div
+        aria-hidden="true"
+        initial={false}
+        animate={{
+          opacity: isExpanded ? 0 : 1,
+          scale: isExpanded ? 0.68 : 1,
+        }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.28,
+          delay: reduceMotion ? 0 : (isExpanded ? 0.04 : 0.12),
+          ease: 'easeOut',
+        }}
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      >
+        <motion.div
+          className="absolute inset-4 rounded-full border border-dashed border-white/20"
+          animate={{ rotate: reduceMotion ? 0 : 360 }}
+          transition={reduceMotion
+            ? { duration: 0 }
+            : { duration: 15, repeat: Infinity, ease: 'linear' }}
+        />
+        <div
+          className="relative z-10 rounded-full p-5 transition-transform duration-300 group-hover:scale-110"
+          style={{ color: category.accent, backgroundColor: `${category.accent}10` }}
+        >
+          <Icon size={32} />
+        </div>
+      </motion.div>
+
+      {/* This button never unmounts: focus survives every expand/collapse. */}
       <button
         type="button"
+        onClick={onToggle}
         aria-expanded={isExpanded}
         aria-controls={panelId}
         aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${category.title} skills`}
-        onClick={onToggle}
         className={[
-          'absolute z-20 flex items-center justify-center outline-none',
+          'absolute z-30 flex items-center justify-center outline-none',
           'focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]',
           isExpanded
-            ? 'right-4 top-4 h-10 w-10 rounded-full border border-white/10 bg-white/5 text-gray-300 transition-colors hover:bg-white/10 hover:text-white'
-            : 'inset-0 h-full w-full rounded-full text-white',
+            ? 'right-4 top-4 h-10 w-10 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+            : 'inset-0 h-full w-full rounded-full',
         ].join(' ')}
       >
-        {isExpanded ? (
-          <X aria-hidden="true" size={18} />
-        ) : (
-          <span className="absolute inset-0 flex items-center justify-center">
-            <motion.span
-              aria-hidden="true"
-              className="absolute inset-4 rounded-full border border-dashed border-white/20"
-              animate={reduceMotion ? { rotate: 0 } : { rotate: 360 }}
-              transition={reduceMotion
-                ? { duration: 0 }
-                : { duration: 15, repeat: Infinity, ease: 'linear' }}
-            />
-            <span
-              className="relative z-10 rounded-full p-5 transition-transform duration-200 hover:scale-105"
-              style={{ color: category.accent, backgroundColor: `${category.accent}12` }}
-            >
-              <Icon aria-hidden="true" size={32} />
-            </span>
-          </span>
+        {isExpanded && (
+          <motion.span
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.5, rotate: -90 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.25, delay: reduceMotion ? 0 : 0.24 }}
+          >
+            <X aria-hidden="true" size={18} />
+          </motion.span>
         )}
       </button>
 
-      {/* Remain mounted as an ID target for aria-controls; content is hidden when collapsed. */}
+      {/* Panel is present for aria-controls, but its visible contents are
+          staggered until the orb has begun opening. They also fade out. */}
       <div
         id={panelId}
         role="region"
         aria-labelledby={titleId}
-        hidden={!isExpanded}
-        className="absolute inset-0"
+        aria-hidden={!isExpanded}
+        className={`absolute inset-0 ${isExpanded ? '' : 'pointer-events-none'}`}
       >
-        {isExpanded && (
-          <motion.div
-            className="flex h-full w-full flex-col p-5 sm:p-7"
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.25, delay: reduceMotion ? 0 : 0.12 }}
-          >
-            <div className="mb-5 flex shrink-0 items-center gap-3 pr-10">
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10"
-                style={{ color: category.accent, backgroundColor: `${category.accent}1f` }}
-              >
-                <Icon aria-hidden="true" size={23} />
-              </div>
-              <div className="min-w-0">
-                <h3 id={titleId} className="text-lg font-bold leading-tight tracking-tight text-white sm:text-2xl">
-                  {category.title}
-                </h3>
-                <p className="mt-1 text-[10px] font-mono uppercase tracking-widest text-gray-500">
-                  Select another orb to switch
-                </p>
-              </div>
-            </div>
-
-            <div
-              ref={sandboxRef}
-              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-white/5 bg-white/[0.015] p-2"
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              key="orb-panel"
+              className="flex h-full w-full flex-col p-5 sm:p-7"
+              initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{
+                opacity: 0, y: 8, scale: 0.98,
+                transition: { duration: reduceMotion ? 0 : 0.16, delay: 0 },
+              }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.3,
+                delay: reduceMotion ? 0 : 0.2,
+                ease: [0.16, 1, 0.3, 1],
+              }}
             >
-              <ul aria-label={`Skills in ${category.title}`} className="flex flex-wrap content-start items-start gap-2.5">
-                {category.skills.map((skill, index) => (
-                  <motion.li
-                    key={skill}
-                    drag={!reduceMotion}
-                    dragConstraints={sandboxRef}
-                    dragElastic={0.12}
-                    dragMomentum={false}
-                    dragSnapToOrigin
-                    initial={reduceMotion ? false : { opacity: 0, scale: 0.9, y: 9 }}
-                    animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                    transition={reduceMotion
-                      ? { duration: 0 }
-                      : { type: 'spring', stiffness: 230, damping: 19, delay: 0.1 + index * 0.035 }}
-                    whileDrag={reduceMotion ? undefined : { scale: 1.07, zIndex: 30 }}
-                    className="relative select-none rounded-lg border border-white/10 bg-[#171717] px-3 py-2 text-xs font-medium text-white shadow-lg sm:text-sm"
-                    style={{
-                      touchAction: reduceMotion ? 'auto' : 'none',
-                      boxShadow: `0 5px 16px rgba(0,0,0,0.25), inset 0 0 9px ${category.accent}12`,
-                      cursor: reduceMotion ? 'default' : 'grab',
-                    }}
-                  >
-                    {skill}
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
+              <div className="mb-5 flex shrink-0 items-center gap-3 pr-10">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10"
+                  style={{ color: category.accent, backgroundColor: `${category.accent}1f` }}
+                >
+                  <Icon aria-hidden="true" size={23} />
+                </div>
+                <div className="min-w-0">
+                  <h3 id={titleId} className="text-lg font-bold leading-tight tracking-tight text-white sm:text-2xl">
+                    {category.title}
+                  </h3>
+                  <p className="mt-1 text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                    Select another orb to switch
+                  </p>
+                </div>
+              </div>
 
-            <p className="mt-3 shrink-0 text-[10px] font-mono uppercase tracking-widest text-white/35">
-              {category.skills.length} skills
-              {!reduceMotion && <span aria-hidden="true"> · Drag tags to explore</span>}
-            </p>
-          </motion.div>
-        )}
+              <div
+                ref={sandboxRef}
+                className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-white/5 bg-white/[0.015] p-2"
+              >
+                <ul aria-label={`Skills in ${category.title}`} className="flex flex-wrap content-start items-start gap-2.5">
+                  {category.skills.map((skill, index) => (
+                    <motion.li
+                      key={skill}
+                      drag={!reduceMotion}
+                      dragConstraints={sandboxRef}
+                      dragElastic={0.12}
+                      dragMomentum={false}
+                      dragSnapToOrigin
+                      initial={reduceMotion ? false : { opacity: 0, scale: 0.6, y: 18 }}
+                      animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+                      transition={reduceMotion
+                        ? { duration: 0 }
+                        : { type: 'spring', stiffness: 210, damping: 18, delay: 0.1 + index * 0.055 }}
+                      whileDrag={reduceMotion ? undefined : { scale: 1.09, zIndex: 30 }}
+                      className="relative select-none rounded-lg border border-white/10 bg-[#171717] px-3 py-2 text-xs font-medium text-white shadow-lg sm:text-sm"
+                      style={{
+                        touchAction: reduceMotion ? 'auto' : 'none',
+                        boxShadow: `0 5px 16px rgba(0,0,0,0.25), inset 0 0 9px ${category.accent}12`,
+                        cursor: reduceMotion ? 'default' : 'grab',
+                      }}
+                    >
+                      {skill}
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="mt-3 shrink-0 text-[10px] font-mono uppercase tracking-widest text-white/35">
+                {category.skills.length} skills
+                {!reduceMotion && <span aria-hidden="true"> · Drag tags to explore</span>}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
