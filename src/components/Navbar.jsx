@@ -9,7 +9,7 @@ export default function Navbar() {
           {/* Social Icons */}
           <div className="hidden md:flex items-center space-x-4 text-slate-400">
             <a href="https://github.com" target="_blank" className="hover:text-white transition-colors"><Github size={20} /></a>
-            <a href="www.linkedin.com/in/wardmendoza" target="_blank" className="hover:text-white transition-colors"><Linkedin size={20} /></a>
+            <a href="https://linkedin.com/in/wardmendoza" target="_blank" className="hover:text-white transition-colors"><Linkedin size={20} /></a>
             <a href="https://instagram.com/mendz.17" target="_blank" className="hover:text-white transition-colors"><Instagram size={20} /></a>
           </div>
 
