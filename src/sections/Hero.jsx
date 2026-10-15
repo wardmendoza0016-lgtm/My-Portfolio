@@ -196,8 +196,8 @@ export default function Hero() {
 
             <a
               ref={btn2Ref}
-              href="/MENDOZA_Resume.pdf"
-              download="MENDOZA_Resume.pdf"
+              href="/Edward_Mendoza_Resume.pdf"
+              download="Edward_Mendoza_Resume.pdf"
               className="group relative px-8 py-4 bg-[#6b8e23] text-white hover:bg-[#55711b] transition-all duration-300 text-xs font-bold tracking-widest uppercase flex items-center gap-2 rounded-sm shadow-lg shadow-[#6b8e23]/20"
             >
               <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
