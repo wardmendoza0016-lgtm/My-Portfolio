@@ -71,7 +71,7 @@ const projects = [
     stat: { value: '40+', label: 'buildings' },
     screenshots: [
       {
-        src: '/projects/dlsud-go/DLSUD_HOME.png'
+        src: '/projects/dlsud-go/DLSUD_Home.png'
       }
     ],
     githubUrl: null,
