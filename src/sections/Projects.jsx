@@ -37,7 +37,12 @@ const projects = [
     accentBorder: 'rgba(107,142,35,0.35)',
     featured: true,
     stat: { value: '12', label: 'modules' },
-    screenshots: [],
+    screenshots: [
+                  {
+                src: '/projects/cybereum/Home_Cybereum.jpg',
+                alt: 'Cybereum Dashboard',
+                caption: 'Home Dashboard',
+              }],
     githubUrl: null, // Replace with an actual repository URL when public.
     liveUrl: null, // Replace with an actual live demo URL when available.
   },
